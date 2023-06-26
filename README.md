@@ -6,7 +6,9 @@ This repo contains data, script and output directories.
 
 # Directory map
 ## ouput/ 
-contains peak files, homers/ and error file. 
+This repo contains peak files, homers/ and error file. The actual outputs 
+under this dir were removed to save the space. This dir just shows the dir
+structure.
 
 ## script/ 
 The script directory contains all the scripts required for analyzing chipseq

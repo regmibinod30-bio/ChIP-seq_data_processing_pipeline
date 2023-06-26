@@ -1,61 +1,9 @@
 # =====================================
 # chip-seq_mm10_a.snake
 # =====================================
-# This script was originally written by HWS and modified by Kan and Binod. This
-# script trims, maps and preprocesses CHIP-Seq data (both input(CONTROL) and
-# chip(TREATMENT)) for peak calling. 
-#
-# =====================================
-# Original instruction by HWS
-# =====================================
-# March 7, 2018 by hws
-# chip-seq_mm10_a.snake: 1st of the two pipelines for chip-seq data analysis
-# file types generated: fq.gz, trimmed fq.gz, bowtie sam, bam, bed, sorted bed, nr bed, homer folders, bg, bw
+# This script is written to process ChIP-seq data. The repo contains README.md
+# file and scripts dir. 
 
-# Follow these steps:
-#   mkdir snake_mm10; cd snake_mm10
-#   module load snakemake/5.1.3
-#   cp ~/to_be_doced/snake/chip-seq_mm10_a.snake Snakefile 
-#   co ~/to_be_doced/snake/config.yaml .
-#   replace mm10 with other genomes if needed: sed s/mm10/hg19/g Snakefile > t; mv t Snakefile
-#   cp the fq folder # fastq file format: *.fq.gz, * can be s01/i01 # i: input
-#   snakemake -np # sanity check
-#   snakemake -np > snake_a.np # command record
-#   snakemake --cores 4 2>snake.error # run snake job on single node, 4 processes simutaneously
-#   snakemake -j 20 --cluster "sbatch  --time=4:00:00 --mem={params.mem} --cpus-per-task={threads}" 2>snake_a.error&
-#   cat > snake_a.sw
-#   module load snakemake/5.1.3; snakemake -j 20 --cluster "sbatch  --time=24:00:00 --mem={params.mem} --cpus-per-task={threads}" 2>snake_a.error
-#   ctrl d
-#   swarm -f snake_a.sw --time=24:00:00
-#   check snake_a.error for pipe completion
-#   mv Snakefile Snakefile_a
-#   cp ~/to_be_doced/snake/chip-seq_mm10_b.snake .
-#   follow instructions in chip-seq_mm10_b.snake
-#
-# After completed:
-# snakemake --summary | sort # works only when run on a single node
-# to see how much mem used by each process
-#   ls *.out | awk '{print "jobhist "substr ($0, 12, 7)}' > t.sh
-#   vi t.sh to remove anything that shouldn't be there
-#   sh t.sh | grep COMPLETED
-# =====================================
-# Kan working on 2021_02_02
-# =====================================
-# # module version added: such as module load trimgalore/0.6.6
-# chip-seq_mm10_b.snake generally not run. The run depends on the request peak_bw
-
-# =====================================
-# Binod updated on Nov 20, 2021
-# =====================================
-#   1. The script was modified and updated for implementation in the newest
-#      version of the snakemake (v6.8.2).
-#   2. The newest version of fastQC was added.
-#   3. The directory flag was added where required.
-#   4. All the tools were updated with the newest version except bowtie and
-#      python.
-#   5. The config.yaml file was updated separating human and mouse genome
-#      related parameters.
-# 
 # =====================================
 # How to run this script
 # =====================================
