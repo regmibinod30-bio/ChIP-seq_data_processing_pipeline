@@ -1,0 +1,139 @@
+# =====================================
+# chip-seq_hg38_b.snake
+# =====================================
+# Written by Binod Regmi, NIH/NIAMS/BDMS
+# This script is written to generate peak and bigwig files from bed files
+# generated from script `chip-seq_mm10_a.snake'.
+# 
+# =====================================
+# How to run this script
+# =====================================
+# This script resides in the same `chip-seq_mm10_a.snake` directory.
+# It needs following files and directories:
+#   1. treatment.json: This file is written in json format that presents the
+#      list of treatment samples. The key represents the sample name and the
+#      value represents the path of each sample file.
+#
+#      <{"TREATMEMT": {"sample_ID": "path_to_bed_file/sample_ID.bed",
+#                       ...
+#                      "sample_ID": "path_to_bed_file/sample_ID.bed"}}
+#   
+#   2. control.json: This file is written in json format that presents the list
+#      of control samples. It is the same format as treatment.json, just replace
+#      "TREATMENT" with "CONTROL". ****IMPORTANT**** the key array of
+#      treatment.json and control.jsone should be same. However, if two or more
+#      treatments are using the same control, the values for these keys could
+#      be same. For example, second and third sample in the follwing data set
+#      have the same control. 
+#      <{"CONTROL": {"SRRXXX1510": "regmib2/data/chipseq/bed_nr/SRRXXX1710.bed",
+#                    "SRRXXX1511": "regmib2/data/chipseq/bed_nr/SRRXXX1711.bed",
+#                    "SRRXXX1512": "regmib2/data/chipseq/bed_nr/SRRXXX1711.bed"}}>
+#
+#   4. chip-seq_snakemake_job.sh: This is a wrapper script for running the
+#      batch job.
+#   
+#   6. cluster.yml: This file holds cluster-specific parameters.
+#
+#   7. mm_config.yaml: This is a configuration file holding parameters and file
+#      paths. This script requires several reference files that are available
+#      in centrally-maintained and updated scientific database in the biowulf.
+#      Provide the path of these files in the config file.
+#   
+#   8. The script does not remove the large number of directories and files
+#      created during the process and those files may not require for
+#      downstream analysis. Remove them.
+#
+#   9. Implement the script dry and note the number of job required. Put number
+#      of jobs (-j flag) in chip-seq_snakemake_job.sh file.
+#
+# Implementing the script:
+#   dry run:
+#       < module load snakemake/6.8.2 >
+#       < snakemake -s chip-seq_hg38_b.snake -np >
+#   batch run:
+#       < sbatch chip-seq_snakemake_job.sh  
+
+configfile: 'treatment.json'
+configfile: 'control.json'
+configfile: 'hs_config.yaml'
+
+SAMPLES = config["TREATMENT"].keys()
+INPUTS = config["CONTROL"].keys()
+
+rule all:
+    input:
+        expand("macs2/bw/{smp}_summits.bw", smp = SAMPLES),
+        expand("macs1/bw/{smp}_peaks.bw", smp = SAMPLES)
+
+rule callpeak_macs2:
+    input:
+        a1 = lambda wildcards: config["TREATMENT"][wildcards.smp],
+        a2 = lambda wildcards: config["CONTROL"][wildcards.smp]
+    output: "macs2/peak/{smp}_summits.bed"
+    params:
+        name = "{smp}",
+        mem = "20G",
+        g = config["macs1"]["hg38"]
+    shell:
+        '''
+        module load macs/2.2.7.1
+        macs2 callpeak -c {input.a2} -t {input.a1} -p 0.005 \
+        -f BED -g {params.g} -n {params.name} --broad-cutoff 0.01 \
+        --fix-bimodal --nomodel --extsize=270 --outdir macs2/peak/
+        '''
+
+rule callpeak_macs1:
+    input:
+        a1 = lambda wildcards: config["TREATMENT"][wildcards.smp],
+        a2 = lambda wildcards: config["CONTROL"][wildcards.smp]
+    output: "macs1/peak/{smp}_peaks.bed"
+    params:
+        name = "{smp}",
+        mem = "10G",
+        g = config["macs1"]["hg38"]
+    shell:
+        '''
+        module load macs/1.4.2 R/3.5.2
+        mkdir -p macs1/peak/
+        cd macs1/peak/
+        macs -c ../../{input.a2} -t ../../{input.a1} -f BED -g {params.g} \
+        -n {params.name} -B -S --nomodel -p 1e-5 2> {params.name}.out
+        '''
+
+rule macs2_mk_peak_bw_files:
+    input:
+        a1 = "homer/bg/{smp}.bg",
+        a2 = "macs2/peak/{smp}_summits.bed"
+    output:
+        o1 = "macs2/bg/{smp}_summits.bg",
+        o2 = "macs2/bw/{smp}_summits.bw"
+    threads: 1
+    params:
+        mem = "20G",
+        g_size = config["genome_size"]["hg38"]
+    shell:
+        '''
+        module load bedtools/2.30.0 ucsc/422
+        mkdir -p macs2/bg macs2/bw
+        intersectBed -u -a {input.a1} -b {input.a2} > {output.o1}
+        bedGraphToBigWig {output.o1} {params.g_size} {output.o2}
+        '''
+
+rule macs1_mk_peak_bw_files:
+    input:
+        a1 = "homer/bg/{smp}.bg",
+        a2 = "macs1/peak/{smp}_peaks.bed"
+    output:
+        o1 = "macs1/bg/{smp}_peaks.bg",
+        o2 = "macs1/bw/{smp}_peaks.bw"
+    threads: 1
+    params:
+        mem = "20G",
+        g_size = config["genome_size"]["hg38"]
+    shell:
+        '''
+        module load bedtools/2.30.0 ucsc/422
+        mkdir -p macs1/bg macs1/bw
+        intersectBed -u -a {input.a1} -b {input.a2} > {output.o1}
+        bedGraphToBigWig {output.o1} {params.g_size} {output.o2}
+        '''
