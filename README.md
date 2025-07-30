@@ -1,5 +1,5 @@
 # =====================================
-# `Report_chip-seq_pipeline`
+# `Chip-seq_pipeline`
 # =====================================
 # Overview
 This repo contains data, script and output directories. 
